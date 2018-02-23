@@ -1,0 +1,14 @@
+{
+  "scripts": {
+    "start": "node server.js"
+  },
+  "name": "gentstripe",
+  "version": "1.0.0",
+  "description": "npm install stripe --save npm install connect serve-static npm install -g npm-install-missing",
+  "dependencies": {
+    "connect": "^3.6.5",
+    "node": "^8.0.0",
+    "serve-static": "^1.13.1",
+    "stripe": "^5.4.0"
+  }
+}
