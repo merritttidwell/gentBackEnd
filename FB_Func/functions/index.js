@@ -294,3 +294,37 @@ exports.charge_dev = functions.https.onRequest((req,res) => {
     });
   }
 });
+
+exports.charges_retrieve_dev = functions.https.onRequest((req,res) => {
+  if (req.method === "GET") {
+    stripeDev.charges.list({customer:"cus_CSEhiP2m0UiNdO"}, function(err, lst) {
+      console.log(lst)
+      console.log(err)
+
+      if (err == null) {
+        res.status = 200
+        res.end(JSON.stringify(lst))
+      } else {
+        res.status = 500
+        res.end()
+      }
+    });
+  }
+});
+
+exports.charges_retrieve_prod = functions.https.onRequest((req,res) => {
+  if (req.method === "GET") {
+    stripeProd.charges.list({customer:"cus_CSEhiP2m0UiNdO"}, function(err, lst) {
+      console.log(lst)
+      console.log(err)
+
+      if (err == null) {
+        res.status = 200
+        res.end(JSON.stringify(lst))
+      } else {
+        res.status = 500
+        res.end()
+      }
+    });
+  }
+});
