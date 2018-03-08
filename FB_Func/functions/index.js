@@ -164,9 +164,14 @@ exports.create_customer_with_card_dev = functions.https.onRequest((req,res) => {
         customer: customer.id
       });
     }).then(function(charge) {
-      console.log(charge)
+      return stripeDev.subscriptions.create({
+        customer: charge.customer,
+        items: [{plan: 'GentsBasicPlan'}],
+      });
+    }).then(function(subscription) {
+      console.log(subscription)
       res.status = 200
-      res.end(JSON.stringify({id: charge.customer}));
+      res.end(JSON.stringify({id: subscription.customer}));
 
     }).catch(function(err) {
       // Deal with an error
