@@ -186,28 +186,36 @@ exports.create_customer_with_card_prod = functions.https.onRequest((req,res) => 
     console.log("createCustomerWithCard");
     eid = req.headers["email"]
     src = req.headers["source"]
+    iChrg = parseInt(req.headers["ichrg"], 10);
+    mChrg = parseInt(req.headers["mchrg"], 10);
     console.log(eid);
     console.log(src);
+    console.log(iChrg);
+    console.log(mChrg);
 
     stripeProd.customers.create({
       email: eid,
-      source: src,
-    }, function(err, customer) {
-      if (customer != null && err == null) {
-        //res.status = 200
-        //res.end(JSON.stringify({id: customer.id}));
-        //cid = customer.id
+      source: src
+    }).then(function(customer) {
+      return stripeProd.charges.create({
+        amount: iChrg - mChrg,
+        currency: 'usd',
+        customer: customer.id
+      });
+    }).then(function(charge) {
+      return stripeProd.subscriptions.create({
+        customer: charge.customer,
+        items: [{plan: 'GentsBasicPlan'}],
+      });
+    }).then(function(subscription) {
+      console.log(subscription)
+      res.status = 200
+      res.end(JSON.stringify({id: subscription.customer}));
 
-        stripeProd.subscriptions.create({
-          customer: customer.id,
-          items: [{plan: "GentsBasicPlan"}],
-        });
-        res.status = 200
-        res.end(JSON.stringify({id: customer.id}));
-      } else {
-        res.status = 500
-        res.end();
-      }
+    }).catch(function(err) {
+      // Deal with an error
+      res.status = 500
+      res.end();
     });
   }
 });
