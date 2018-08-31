@@ -1,5 +1,10 @@
 const functions = require('firebase-functions');
-var stripeProd = require("stripe")(functions.config().stripe.token);//("sk_test_Qc3frsXwp1sA8KnQSXC1SU6i");
+const config = functions.config();
+var token = "sk_test_Qc3frsXwp1sA8KnQSXC1SU6i";
+if (config && config.stripe && config.stripe.token) {
+  token = functions.config().stripe.token;
+}
+var stripeProd = require("stripe")(token);//("sk_test_Qc3frsXwp1sA8KnQSXC1SU6i");
 var stripeDev = require("stripe")("sk_test_Qc3frsXwp1sA8KnQSXC1SU6i");
 
 // // Create and Deploy Your First Cloud Functions
@@ -159,14 +164,14 @@ exports.create_customer_with_card_dev = functions.https.onRequest((req,res) => {
       source: src
     }).then(function(customer) {
       return stripeDev.charges.create({
-        amount: iChrg - mChrg,
+        amount: iChrg,
         currency: 'usd',
         customer: customer.id
       });
     }).then(function(charge) {
       return stripeDev.subscriptions.create({
         customer: charge.customer,
-        items: [{plan: 'GentsBasicPlan'}],
+        items: [{plan: 'plan_DUrIJM6LUrw8Y9'}],
       });
     }).then(function(subscription) {
       console.log(subscription)
@@ -198,14 +203,14 @@ exports.create_customer_with_card_prod = functions.https.onRequest((req,res) => 
       source: src
     }).then(function(customer) {
       return stripeProd.charges.create({
-        amount: iChrg - mChrg,
+        amount: iChrg,
         currency: 'usd',
         customer: customer.id
       });
     }).then(function(charge) {
       return stripeProd.subscriptions.create({
         customer: charge.customer,
-        items: [{plan: 'GentsBasicPlan'}],
+        items: [{plan: 'plan_DUrIJM6LUrw8Y9'}],
       });
     }).then(function(subscription) {
       console.log(subscription)
@@ -246,7 +251,7 @@ exports.charge_prod = functions.https.onRequest((req,res) => {
         console.log("CHARGE ERROR ===>>>");
         console.log(err);
       }
-      
+
       if (charge != null && err == null) {
         res.status = 200
         res.end(JSON.stringify(charge));
@@ -283,7 +288,7 @@ exports.charge_dev = functions.https.onRequest((req,res) => {
         console.log("CHARGE ERROR ===>>>");
         console.log(err);
       }
-      
+
       if (charge != null && err == null) {
         res.status = 200
         res.end(JSON.stringify(charge));
@@ -294,10 +299,12 @@ exports.charge_dev = functions.https.onRequest((req,res) => {
     });
   }
 });
+//this seems bad, hardcoding the cusId
 
 exports.charges_retrieve_dev = functions.https.onRequest((req,res) => {
   if (req.method === "GET") {
-    stripeDev.charges.list({customer:"cus_CSEhiP2m0UiNdO"}, function(err, lst) {
+    const {customerId} = req.headers
+    stripeDev.charges.list({customer:customerId}, function(err, lst) {
       console.log(lst)
       console.log(err)
 
@@ -312,9 +319,91 @@ exports.charges_retrieve_dev = functions.https.onRequest((req,res) => {
   }
 });
 
+
+//create a new subscription with a customer, return new subscriptionID
+
+const generateUpdateSubEvent = (stripeAPI) => {
+  return functions.https.onRequest((req,res) => {
+    if (req.method === "POST") {
+      const { customerId } = req.body;
+      stripeAPI.subscriptions.retrieve(subscriptionId, function(err, subscription) {
+        if (err !== null) {
+          res.status = 500
+          return res.end()
+        }
+
+        const item = subscription.items.data[0]
+
+        stripeAPI.subscriptionItems.update(
+          item.id,
+          { quantity: item.quantity + 1 },
+          function(err, subscriptionItem) {
+            if (err == null) {
+              res.status = 200
+              res.end(JSON.stringify(subscriptionItem))
+            } else {
+              res.status = 500
+              res.end(JSON.stringify(err))
+            }
+          }
+        );
+      })
+    }
+  });
+}
+
+const generateCreateSubEvent = (stripeAPI) => {
+  return functions.https.onRequest((req,res) => {
+    if (req.method === "POST") {
+      const { customerId } = req.body;
+      stripeAPI.subscriptions.create({
+        customer: customerId,
+        items: [{plan: 'plan_DUrIJM6LUrw8Y9'}],
+      }, (err, subscription) => {
+        if (err !== null) {
+          res.status = 500
+          res.end(JSON.stringify(err))
+          return
+        }
+        res.status = 200
+        res.end(JSON.stringify(subscription))
+      })
+    }
+  });
+}
+
+const generateListInvoicesEvent = (stripeAPI) => {
+  return functions.https.onRequest((req,res) => {
+    if (req.method === "POST") {
+      const { subscriptionId } = req.body;
+      stripeAPI.invoices.list({
+        subscription: subscriptionId
+      }, (err, invoices) => {
+        if (err !== null) {
+          res.status = 500
+          res.end(JSON.stringify(err))
+          return
+        }
+        res.status = 200
+        res.set('Content-type', 'application/json').end(JSON.stringify(invoices))
+      })
+    }
+  });
+}
+
+exports.update_sub_dev = generateUpdateSubEvent(stripeDev)
+exports.update_sub_prod = generateUpdateSubEvent(stripeProd)
+
+exports.create_sub_dev = generateCreateSubEvent(stripeDev)
+exports.create_sub_prod = generateCreateSubEvent(stripeProd)
+
+exports.list_invoices_dev = generateListInvoicesEvent(stripeDev)
+exports.list_invoices_prod = generateListInvoicesEvent(stripeProd)
+
 exports.charges_retrieve_prod = functions.https.onRequest((req,res) => {
   if (req.method === "GET") {
-    stripeProd.charges.list({customer:"cus_CSEhiP2m0UiNdO"}, function(err, lst) {
+    const {customerId} = req.headers
+    stripeProd.charges.list({ customer: customerId }, function(err, lst) {
       console.log(lst)
       console.log(err)
 
