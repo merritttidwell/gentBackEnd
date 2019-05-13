@@ -149,37 +149,42 @@ exports.create_customer_dev = functions.https.onRequest((req,res) => {
 
 exports.create_customer_with_card_dev = functions.https.onRequest((req,res) => {
   if (req.method === "POST") {
-    console.log("createCustomerWithCard");
+    console.log("createCustomerWithCardDev");
     eid = req.headers["email"]
     src = req.headers["source"]
-    iChrg = parseInt(req.headers["ichrg"], 10);
+
+    iChrg = parseInt("0", 10);
     mChrg = parseInt(req.headers["mchrg"], 10);
     console.log(eid);
     console.log(src);
-    console.log(iChrg);
+  //  console.log(iChrg);
     console.log(mChrg);
 
     stripeDev.customers.create({
       email: eid,
       source: src
     }).then(function(customer) {
+      console.log("Customer creation... ", customer)
       return stripeDev.charges.create({
-        amount: iChrg,
+        amount: mChrg,
         currency: 'usd',
         customer: customer.id
       });
     }).then(function(charge) {
+      console.log("About to charge . ", charge)
       return stripeDev.subscriptions.create({
         customer: charge.customer,
         items: [{plan: 'plan_DUrIJM6LUrw8Y9'}],
       });
     }).then(function(subscription) {
+      console.log("Subscription ... ", subscription)
       console.log(subscription)
+      console.log("do i make it here?")
       res.status = 200
-      res.end(JSON.stringify({id: subscription.customer}));
-
+      res.end(JSON.stringify({customerId: subscription.customer, subscriptionId: subscription.id}));
     }).catch(function(err) {
       // Deal with an error
+      console.log("Failed here... ", err)
       res.status = 500
       res.end();
     });
@@ -266,7 +271,7 @@ exports.charge_prod = functions.https.onRequest((req,res) => {
 exports.charge_dev = functions.https.onRequest((req,res) => {
   if (req.method === "POST") {
     console.log(req.headers);
-
+    console.log("do i make it to the charge function");
     cus = req.headers["cus"]
     card = req.headers["card"]
     amount = req.headers["amount"]
